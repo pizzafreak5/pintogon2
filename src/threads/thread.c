@@ -214,6 +214,16 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
 
+  //More garrett
+  //Check if thread is higher priority, if so, yield currently
+  struct thread * cur = thread_current(); //<- Garrett Insert
+
+  if (cur != NULL && cur->priority < t->priority)
+  {
+    thread_yield();
+  }
+  //End more Garrett
+
   return tid;
 }
 
@@ -249,6 +259,7 @@ thread_unblock (struct thread *t)
   ASSERT (is_thread (t));
 
   old_level = intr_disable ();
+
   ASSERT (t->status == THREAD_BLOCKED);
   //Garrett Start
   //Push the thread on the back of its priority queue
@@ -257,6 +268,7 @@ thread_unblock (struct thread *t)
 
   /*list_push_back (&ready_list, &t->elem);*/ // Original line
   t->status = THREAD_READY;
+
   intr_set_level (old_level);
 }
 
@@ -355,7 +367,12 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  thread_current ()->priority = new_priority;
+  if (new_priority <= PRI_MAX)
+    thread_current ()->priority = new_priority;
+  else
+  {
+    thread_current ()->priority = PRI_MAX;
+  }
   //Garrett Start
   thread_yield();
   //Garrett end
@@ -457,7 +474,7 @@ running_thread (void)
   /* Copy the CPU's stack pointer into `esp', and then round that
      down to the start of a page.  Because `struct thread' is
      always at the beginning of a page and the stack pointer is
-     somewhere in the middle, this locates the curent thread. */
+     somewhere in the middle, this locates the current thread. */
   asm ("mov %%esp, %0" : "=g" (esp));
   return pg_round_down (esp);
 }
