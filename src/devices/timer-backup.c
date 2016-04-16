@@ -53,7 +53,6 @@ static void wake_threads(struct thread* t, void *aux)
 }
 //Garrett End
 
-
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
    and registers the corresponding interrupt. */
 void
@@ -107,31 +106,32 @@ timer_elapsed (int64_t then)
 {
   return timer_ticks () - then;
 }
-
+ 
 /* Sleeps for approximately TICKS timer ticks.  Interrupts must
    be turned on. */
 void
 timer_sleep (int64_t ticks) 
 {
+  /* ORIGINAL CODE  
   int64_t start = timer_ticks ();
 
   ASSERT (intr_get_level () == INTR_ON);
+  while (timer_elapsed (start) < ticks) 
+    thread_yield ();
+  */
+  //Garrett Start
+  int64_t start = timer_ticks ();
+  ASSERT(intr_get_level() == INTR_ON);
+  thread_current()->sleep_ticks = ticks;
+  
+  //Disable interupt to block thread
+  enum intr_level old_level = intr_disable();
 
-  /* Changed by Garrett*/
-  if (ticks > 0){
-    thread_current()->sleep_ticks = ticks;
+  thread_block();
 
-    //Disable interrupts for thread block
-    enum intr_level old_level = intr_disable();
-
-    thread_block();
-
-    //resotre interupt level
-    intr_set_level(old_level);
-
-  }
-
-  //End Garrett section
+  //Restore interrupt level
+  intr_set_level(old_level);
+  //Garrett End
 
 }
 
@@ -209,17 +209,9 @@ timer_print_stats (void)
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
-  //Original code
   ticks++;
   thread_tick ();
-
-  //Note: Interrupts are disabled, as this is an interrupt handler
-  //This function call sends wake_threads() to each thread
-  thread_foreach(wake_threads, 0);
-  //Garrett End
 }
-
-
 
 /* Returns true if LOOPS iterations waits for more than one timer
    tick, otherwise false. */

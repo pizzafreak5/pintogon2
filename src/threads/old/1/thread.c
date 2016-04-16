@@ -24,11 +24,6 @@
    that are ready to run but not actually running. */
 static struct list ready_list;
 
-//Garrett Starts
-/* 64 priority */
-static struct list ready_lists[64];
-//Garrett End
-
 /* List of all processes.  Processes are added to this list
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
@@ -97,14 +92,6 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
-
-  //Garrett Start
-  int i = 0;
-  for (i = 0; i < 64; i++)
-  {
-    list_init(&(ready_lists[i]));
-  }
-  //Garrett End
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -250,12 +237,7 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  //Garrett Start
-  //Push the thread on the back of its priority queue
-  list_push_back (&(ready_lists[t->priority]), &t->elem);
-  //Garrett End
-
-  /*list_push_back (&ready_list, &t->elem);*/ // Original line
+  list_push_back (&ready_list, &t->elem);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -326,9 +308,7 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) 
-    //Push the thread on the back of it's priority queue
-    list_push_back (&(ready_lists[cur->priority]), &cur->elem);
-    //list_push_back (&ready_list, &cur->elem); //ORIGINAL LINE
+    list_push_back (&ready_list, &cur->elem);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -356,9 +336,6 @@ void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
-  //Garrett Start
-  thread_yield();
-  //Garrett end
 }
 
 /* Returns the current thread's priority. */
@@ -513,27 +490,10 @@ alloc_frame (struct thread *t, size_t size)
 static struct thread *
 next_thread_to_run (void) 
 {
-  //Original Code
-  /*
   if (list_empty (&ready_list))
     return idle_thread;
   else
     return list_entry (list_pop_front (&ready_list), struct thread, elem);
-  */
-  //Garrett Start
-  /*This section of code implements priority scheduling*/
-  int i = 0;
-  for (i = 63; i >= 0; i--){
-    //Find the highest priority list with elements
-    if (!list_empty(&ready_lists[i]))
-    {
-      return list_entry (list_pop_front (&ready_lists[i]), struct thread, elem);
-    }
-  }
-
-  //If nothing has been fount, return idle thread
-  return idle_thread;
-  //Garrett end
 }
 
 /* Completes a thread switch by activating the new thread's page
@@ -555,50 +515,20 @@ next_thread_to_run (void)
 void
 thread_schedule_tail (struct thread *prev)
 {
-  //Original Code
+  struct thread *cur = running_thread ();
   
-  //struct thread *cur = running_thread ();
-  
-  //ASSERT (intr_get_level () == INTR_OFF);
+  ASSERT (intr_get_level () == INTR_OFF);
 
   /* Mark us as running. */
-  //cur->status = THREAD_RUNNING;
-
-  /* Start new time slice. */
-  //thread_ticks = 0;
-
-//#ifdef USERPROG
-  /* Activate the new address space. */
-  //process_activate ();
-//#endif
-
-  /* If the thread we switched from is dying, destroy its struct
-     thread.  This must happen late so that thread_exit() doesn't
-     pull out the rug under itself.  (We don't free
-     initial_thread because its memory was not obtained via
-     palloc().) */
-  //if (prev != NULL && prev->status == THREAD_DYING && prev != initial_thread) 
-    //{
-      //ASSERT (prev != cur);
-      //palloc_free_page (prev);
-    //}
-  
-
-  //Garrett Start - Original seems fine, this doesn't need to handle re-scheduling the
-  //                previous thread.
-  struct thread *cur = running_thread();
-  ASSERT(intr_get_level() == INTR_OFF);
-  
-  //Mark current thread as running_thread
   cur->status = THREAD_RUNNING;
 
-  //Start a new time slice
+  /* Start new time slice. */
   thread_ticks = 0;
 
-  #ifdef USERPROG
-    //Activate the new address space.
-    process_activate ();
-  #endif
+#ifdef USERPROG
+  /* Activate the new address space. */
+  process_activate ();
+#endif
 
   /* If the thread we switched from is dying, destroy its struct
      thread.  This must happen late so that thread_exit() doesn't
@@ -610,11 +540,6 @@ thread_schedule_tail (struct thread *prev)
       ASSERT (prev != cur);
       palloc_free_page (prev);
     }
-
-  
-  //Garrett End
-  
-
 }
 
 /* Schedules a new process.  At entry, interrupts must be off and
@@ -627,8 +552,6 @@ thread_schedule_tail (struct thread *prev)
 static void
 schedule (void) 
 {
-  //Original Code
-  /*
   struct thread *cur = running_thread ();
   struct thread *next = next_thread_to_run ();
   struct thread *prev = NULL;
@@ -640,21 +563,6 @@ schedule (void)
   if (cur != next)
     prev = switch_threads (cur, next);
   thread_schedule_tail (prev);
-  */
-  //Garrett Start - Original code seems fine
-  struct thread *cur = running_thread ();
-  struct thread *next = next_thread_to_run ();
-  struct thread *prev = NULL;
-
-  ASSERT (intr_get_level () == INTR_OFF);
-  ASSERT (cur->status != THREAD_RUNNING);
-  ASSERT (is_thread (next));
-
-  if (cur != next)
-    prev = switch_threads (cur, next);
-  thread_schedule_tail (prev);
-  
-  //Garrett End
 }
 
 /* Returns a tid to use for a new thread. */

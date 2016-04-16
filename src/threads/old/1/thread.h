@@ -90,6 +90,7 @@ struct thread
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
     uint64_t sleep_ticks;               /* Garrett: time to sleep in ticks */
+    struct thread* donor;		/* Chris: the thread which donated its priority to this thread*/
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
@@ -133,10 +134,16 @@ void thread_foreach (thread_action_func *, void *);
 
 int thread_get_priority (void);
 void thread_set_priority (int);
+//Chris Start
+int thread_calc_priority(void);
+void thread_donate_priority(struct thread *t);
+//Chris End
 
 int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+
+
 
 #endif /* threads/thread.h */
