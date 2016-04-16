@@ -30,6 +30,29 @@ static void busy_wait (int64_t loops);
 static void real_time_sleep (int64_t num, int32_t denom);
 static void real_time_delay (int64_t num, int32_t denom);
 
+
+//Garrett Start
+/*
+ * This function wakes a sleeping thread.
+ * If the thread is being blocked, and the thread's
+ * sleep_ticks, unblock the thread.
+ */
+static void wake_threads(struct thread* t, void *aux)
+{
+  if (t->status == THREAD_BLOCKED)
+  {
+    if (t->sleep_ticks > 0)
+    {
+      t->sleep_ticks--;
+      if(t->sleep_ticks == 0)
+      {
+        thread_unblock(t);
+      }
+    }
+  }
+}
+//Garrett End
+
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
    and registers the corresponding interrupt. */
 void
@@ -83,17 +106,33 @@ timer_elapsed (int64_t then)
 {
   return timer_ticks () - then;
 }
-
+ 
 /* Sleeps for approximately TICKS timer ticks.  Interrupts must
    be turned on. */
 void
 timer_sleep (int64_t ticks) 
 {
+  /* ORIGINAL CODE  
   int64_t start = timer_ticks ();
 
   ASSERT (intr_get_level () == INTR_ON);
   while (timer_elapsed (start) < ticks) 
     thread_yield ();
+  */
+  //Garrett Start
+  int64_t start = timer_ticks ();
+  ASSERT(intr_get_level() == INTR_ON);
+  thread_current()->sleep_ticks = ticks;
+  
+  //Disable interupt to block thread
+  enum intr_level old_level = intr_disable();
+
+  thread_block();
+
+  //Restore interrupt level
+  intr_set_level(old_level);
+  //Garrett End
+
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
