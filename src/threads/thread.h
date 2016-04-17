@@ -92,6 +92,7 @@ struct thread
     uint64_t sleep_ticks;               /* Garrett: time to sleep in ticks */
     struct thread * donor;              // Garrett: Pointer to donor
     struct lock * wanted;               // Garrett: Lock that is wanted
+    int in_queue;
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */

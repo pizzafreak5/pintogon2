@@ -197,20 +197,23 @@ lock_acquire (struct lock *lock)
   ASSERT (!lock_held_by_current_thread (lock));
 
   //Original code
-  sema_down (&lock->semaphore);
-  lock->holder = thread_current ();
+  //sema_down (&lock->semaphore);
+  //lock->holder = thread_current ();
   
-  /*
+  
   bool successful = lock_try_acquire(lock);
   
   if (!successful) 
   {
+      enum intr_level old_level = intr_disable();
       //If we didn't get the lock, donate priority
+      //printf("\n%s wants %s s lock", thread_current()->name, lock->holder->name);
       lock->holder->donor = thread_current();
       lock->holder->wanted = lock;
       reposition_in_queue(lock->holder);
-      thread_yield();
-  }*/
+      thread_block();
+      intr_set_level(old_level);
+  }
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -241,21 +244,29 @@ lock_try_acquire (struct lock *lock)
 void
 lock_release (struct lock *lock) 
 {
+  //printf ("\nAsserting %s = %s", thread_name, lock->holder->name); THIS RAMDOMLY BROKE FUCK PINTONS
+  //GODDAMN IT MOTHER  FUCKING COCK SUCKING RAPE TASTIC FUCKING MOTHER FUCKER SON OF A BITCH RETARD 
+  //FUCK
   ASSERT (lock != NULL);
+  ASSERT (lock->holder != NULL)
   ASSERT (lock_held_by_current_thread (lock));
 
-  /*
+  char thread_yield_after = 0;
   if (lock == lock->holder->wanted)
   {
-    //If this is the wanted lock, give back donor priority
+    //If this is the wanted lock, give back donor priority and give the donor the lock
+    //printf("\n%s releasing lock that %s wants", lock->holder->name, lock->holder->donor->name);
+    thread_unblock(lock->holder->donor);
+    lock->holder = lock->holder->donor;
     lock->holder->donor = NULL;
     lock->holder->wanted = NULL;
     thread_yield();
-  } */
-
-  lock->holder = NULL;
-  sema_up (&lock->semaphore);
-  
+  }
+  else
+  {
+    lock->holder = NULL;
+    sema_up (&lock->semaphore);
+  }
   
 }
 

@@ -264,6 +264,8 @@ thread_unblock (struct thread *t)
   //Garrett Start
   //Push the thread on the back of its priority queue
   list_push_back (&(ready_lists[thread_priority(t)]), &t->elem);
+  //Record the queue that thread is placed in
+  t->in_queue = thread_priority(t); 
   //Garrett End
 
   /*list_push_back (&ready_list, &t->elem);*/ // Original line
@@ -338,10 +340,13 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread)
+  {
     //Push the thread on the back of it's priority queue
     list_push_back (&(ready_lists[thread_priority(cur)]), &cur->elem);
     //list_push_back (&ready_list, &cur->elem); //ORIGINAL LINE
-  
+    //Record the queue that thread is placed in
+    cur->in_queue = thread_priority(cur);  
+  }
   //=============================
   cur->status = THREAD_READY; //Make sure this doesent get removed again
   //=============================
@@ -398,15 +403,14 @@ int thread_priority(struct thread * t) //Function returns the highest value in t
 
 void reposition_in_queue(struct thread * t) //resets a non-running thread's position in the queues
 {
-
+  ASSERT(is_thread(t));
   enum intr_level old_level = intr_disable();
   if (t->priority != thread_priority(t))
   {
     
     //Find and remove the thread from the 
-    int queue = t->priority;
     struct list_elem * cursor;
-    cursor = list_begin(&ready_lists[queue]);
+    cursor = list_begin(&ready_lists[t->in_queue]);
     while (list_entry (cursor, struct thread, elem) != t)
     {
       cursor = list_next(cursor);
@@ -417,6 +421,7 @@ void reposition_in_queue(struct thread * t) //resets a non-running thread's posi
     //Insert into new queue
     int new_queue = thread_priority(t);
     list_push_back(&ready_lists[new_queue], &t->elem);
+    t->in_queue = thread_priority(t);
   }
   intr_set_level(old_level);
 }
@@ -593,7 +598,10 @@ next_thread_to_run (void)
     //Find the highest priority list with elements
     if (!list_empty(&ready_lists[i]))
     {
-      return list_entry (list_pop_front (&ready_lists[i]), struct thread, elem);
+      struct thread * next = list_entry (list_pop_front (&ready_lists[i]), struct thread, elem);
+      //ASSERT(is_thread(next));
+      //printf("\nNXT: Current: %s ", next->name);
+      return next;
     }
   }
 
