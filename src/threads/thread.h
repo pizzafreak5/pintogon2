@@ -90,6 +90,8 @@ struct thread
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
     uint64_t sleep_ticks;               /* Garrett: time to sleep in ticks */
+    struct thread * donor;              // Garrett: Pointer to donor
+    struct lock * wanted;               // Garrett: Lock that is wanted
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
@@ -133,6 +135,10 @@ void thread_foreach (thread_action_func *, void *);
 
 int thread_get_priority (void);
 void thread_set_priority (int);
+
+//Garrett - For Priority Donations
+int thread_priority(struct thread * t); //Function returns the highest value in the priority chain
+void reposition_in_queue(struct thread * t); //resets a non-running thread's position in the queues
 
 int thread_get_nice (void);
 void thread_set_nice (int);

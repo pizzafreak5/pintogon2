@@ -218,7 +218,7 @@ thread_create (const char *name, int priority,
   //Check if thread is higher priority, if so, yield currently
   struct thread * cur = thread_current(); //<- Garrett Insert
 
-  if (cur != NULL && cur->priority < t->priority)
+  if (cur != NULL && cur->priority < thread_priority(t))
   {
     thread_yield();
   }
@@ -359,6 +359,7 @@ thread_foreach (thread_action_func *func, void *aux)
        e = list_next (e))
     {
       struct thread *t = list_entry (e, struct thread, allelem);
+      //return list_entry (list_pop_front (&ready_list), struct thread, elem);
       func (t, aux);
     }
 }
@@ -378,11 +379,46 @@ thread_set_priority (int new_priority)
   //Garrett end
 }
 
+//Garrett
+int thread_priority(struct thread * t) //Function returns the highest value in the priority chain
+{
+  if(t->donor == NULL)
+  {
+    return t->priority;
+  }
+  else
+  {
+    return thread_priority(t->donor);
+  }
+}
+
+void reposition_in_queue(struct thread * t) //resets a non-running thread's position in the queues
+{
+  if (t->priority != thread_priority(t))
+  {
+    //Find and remove the thread from the 
+    int queue = t->priority;
+    struct list_elem * cursor;
+    cursor = list_begin(&ready_lists[queue]);
+    while (list_entry (cursor, struct thread, elem) != t)
+    {
+      cursor = list_next(cursor);
+    }
+    
+    list_remove(cursor);
+    
+    //Insert into new queue
+    int new_queue = thread_priority(t);
+    list_push_back(&ready_lists[new_queue], &t->elem);
+  }
+}
+
 /* Returns the current thread's priority. */
 int
 thread_get_priority (void) 
 {
-  return thread_current ()->priority;
+  struct thread * current = thread_current();
+  return thread_priority(current);
 }
 
 /* Sets the current thread's nice value to NICE. */
@@ -503,6 +539,10 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
+
+  //Garrett: Initialize donor, wanted
+  t->donor = NULL;
+  t->wanted = NULL;
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
