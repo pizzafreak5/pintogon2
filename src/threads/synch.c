@@ -201,12 +201,15 @@ lock_acquire (struct lock *lock)
   lock->holder = thread_current ();
   
   /*
-  bool successful = lock_try_acquire(lock)
+  bool successful = lock_try_acquire(lock);
   
   if (!successful) 
   {
       //If we didn't get the lock, donate priority
       lock->holder->donor = thread_current();
+      lock->holder->wanted = lock;
+      reposition_in_queue(lock->holder);
+      thread_yield();
   }*/
 }
 
@@ -241,8 +244,19 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
 
+  /*
+  if (lock == lock->holder->wanted)
+  {
+    //If this is the wanted lock, give back donor priority
+    lock->holder->donor = NULL;
+    lock->holder->wanted = NULL;
+    thread_yield();
+  } */
+
   lock->holder = NULL;
   sema_up (&lock->semaphore);
+  
+  
 }
 
 /* Returns true if the current thread holds LOCK, false
