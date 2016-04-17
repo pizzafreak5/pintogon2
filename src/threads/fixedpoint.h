@@ -71,12 +71,13 @@ fixed divFixedInt(fixed a, int b) {
 	return c;
 }
 //Divides two integers as fixed structs so it can be used as fractions in BSD implementation
-fixed fractionInt(int a, int b) {
+//where the fraction is a / b 
+fixed fractionInt(int numerator, int denominator) {
 	fixed c;
 	fixed af;
 	fixed bf;
-	af.num = a * ONES_PLACE;
-	bf.num = b * ONES_PLACE;
+	af.num = numerator * ONES_PLACE;
+	bf.num = denominator * ONES_PLACE;
 	c.num = (((long long) af.num) * ONES_PLACE / bf.num);
 	return c;
 }

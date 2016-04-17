@@ -463,9 +463,9 @@ thread_get_load_avg (void)
   //load_avg is declared in .h with initialization to 0
   size_t lengthOfReadyList = list_size (&ready_list);
   load_avg = addFixed(
-	mulFixed(load_avg, divFixedInt(convertToFixed(59), 60))
+	mulFixed(fractionInt(59,60), load_avg)
 	, 
-	mulFixedInt(divFixedInt(convertToFixed(1), 60),ready_threads)
+	mulFixed(fractionInt(1,60),ready_threads)
   );
   return roundFixed( mulFixedInt(load_avg, 100) ); //100 x load_avg
   
