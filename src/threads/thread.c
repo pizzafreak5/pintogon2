@@ -147,9 +147,29 @@ thread_tick (void)
   else
     kernel_ticks++;
 
-  /* Enforce preemption. */
-  if (++thread_ticks >= TIME_SLICE)
-    intr_yield_on_return ();
+
+
+//BSD STUFF
+  //Check if BSD is on
+  if (thread_mlfqs)
+  {
+        //Check if it has been a second
+	if (threads_ticks++ %TIME_SLICE == 0 )
+	{  		
+		//Update load
+		int newLoad = thread_get_load_avg();
+		//Update recent_cpu and yield thread if priority is changed
+		//nice isn't changed here
+		//Will yield thread if current thread isn't highest priority
+		thread_set_nice(nice);
+	}
+  }
+  else
+  {
+ 	/* Enforce preemption. */
+	if (++thread_ticks >= TIME_SLICE)
+		intr_yield_on_return ();
+  }
 }
 
 /* Prints thread statistics. */
@@ -386,34 +406,86 @@ thread_get_priority (void)
 }
 
 /* Sets the current thread's nice value to NICE. */
-void
-thread_set_nice (int nice UNUSED) 
+void thread_set_nice (int newNice) //was int nice UNUSED
 {
-  /* Not yet implemented. */
+  //Upper and lower bounds for nice
+  if (newNice > 20)
+  {
+	newNice = 20;
+  } else if (newNice < -20)
+  {
+	newNice = -20;
+  }
+  nice = newNice;
+  //priority = PRI_MAX - (recent_cpu/4) - (nice*2)  
+  priority = subFixed(
+	convertToFixed(PRI_MAX),
+	subFixed(
+		divFixedInt(recent_cpu, 4),
+		mulFixedInt(convertToFixed(nice), 2)
+	)
+  );
+  //Check to see if it the highest priority if not yield
+  for (i = 63; i >= 0; i--){
+    //Find the highest priority list with elements
+    if (!list_empty(&ready_lists[i]))
+    {
+        //NOT THE HIGHEST PRIORITY, YIELD
+     	if (i >= roundFixed(priority))
+	{
+	    thread_yield();
+	    return;
+	}
+    }
+  }
+  
+  
+  
+  
+  
 }
 
 /* Returns the current thread's nice value. */
 int
 thread_get_nice (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return nice;
+  //return 0;
 }
 
 /* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  /* load avg is a running average that should be recalculated 
+	load_avg = (59/60)*load_avg + (1/60)*ready_threads
+  */
+  //load_avg is declared in .h with initialization to 0
+  size_t lengthOfReadyList = list_size (&ready_list);
+  load_avg = addFixed(
+	mulFixed(load_avg, divFixedInt(convertToFixed(59), 60))
+	, 
+	mulFixedInt(divFixedInt(convertToFixed(1), 60),ready_threads)
+  );
+  return roundFixed( mulFixedInt(load_avg, 100) ); //100 x load_avg
+  
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  //recent_cpu = (2x load_avg) / (2xload_avg + 1) * recent_cpu + nice
+  recent_cpu = addFixedInt(
+	mulFixed(recent_cpu,	
+		divFixed(
+			mulFixedInt(load_avg, 2),
+			addFixedInt(mulFixedInt(load_avg, 2), 1)	
+		)
+	),
+	nice
+  );
+  return roundFixed( mulFixedInt(roundFixed, 100) ); //100 x recent_cpu
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.

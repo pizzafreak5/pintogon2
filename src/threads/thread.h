@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "fixedpoint.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -90,6 +91,18 @@ struct thread
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
     uint64_t sleep_ticks;               /* Garrett: time to sleep in ticks */
+    // BSD Variables
+    int nice = 0;			//Initialize nice to 0 as stated 
+    int ready_threads = 0;		//Ready thread length
+
+    struct fixed priority;
+    priority.num = PRI_DEFAULT;		//Default priority for priority
+    
+    struct fixed recent_cpu;
+    recent_cpu.num = 0	'		//Default recent cpu
+    
+    struct fixed load_avg;
+    load_avg.num = 0;			//Default load_avg value
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
