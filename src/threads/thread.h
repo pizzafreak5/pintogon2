@@ -90,13 +90,14 @@ struct thread
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
     uint64_t sleep_ticks;               /* Garrett: time to sleep in ticks */
-    struct thread * donor;              // Garrett: Pointer to donor
-    struct lock * wanted;               // Garrett: Lock that is wanted
+    struct list  donors;              // Garrett: Pointer to donor
+    struct lock * waiting_on;               // Garrett: Lock that is wanted
     int in_queue;
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
-
+    struct list_elem donor_e;       //element for donor lists
+    struct list_elem lock_e;            //element for lock's wanted list
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */

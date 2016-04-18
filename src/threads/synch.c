@@ -178,6 +178,7 @@ lock_init (struct lock *lock)
   ASSERT (lock != NULL);
 
   lock->holder = NULL;
+  list_init(waiting_threads);
   sema_init (&lock->semaphore, 1);
 }
 
@@ -207,11 +208,17 @@ lock_acquire (struct lock *lock)
   {
       enum intr_level old_level = intr_disable();
       //If we didn't get the lock, donate priority
-      //printf("\n%s wants %s s lock", thread_current()->name, lock->holder->name);
-      lock->holder->donor = thread_current();
-      lock->holder->wanted = lock;
+      //Put ourselves onto the holder's donor list
+      list_push_front(&lock-holder->donors, &thread_current()->donor_e)
+      //Set our waiting lock
+      thread_current()->waiting_on = lock;
+      //Put us on the locks waiting list
+      list_push_front(&lock->waiting_threads, &thread_current->lock_e);
+      //Reposition holder on the ready queues
       reposition_in_queue(lock->holder);
+      //Block current thread
       thread_block();
+      
       intr_set_level(old_level);
   }
 }
@@ -244,23 +251,53 @@ lock_try_acquire (struct lock *lock)
 void
 lock_release (struct lock *lock) 
 {
-  //printf ("\nAsserting %s = %s", thread_name, lock->holder->name); THIS RAMDOMLY BROKE FUCK PINTONS
-  //GODDAMN IT MOTHER  FUCKING COCK SUCKING RAPE TASTIC FUCKING MOTHER FUCKER SON OF A BITCH RETARD 
-  //FUCK
+  
   ASSERT (lock != NULL);
   ASSERT (lock->holder != NULL)
   ASSERT (lock_held_by_current_thread (lock));
-
-  char thread_yield_after = 0;
-  if (lock == lock->holder->wanted)
+  
+ 
+  //if the lock is wanted, give it to the highest priority lock waiting for it  
+  if (!list_empty(&lock->waiting_on))
   {
     //If this is the wanted lock, give back donor priority and give the donor the lock
-    //printf("\n%s releasing lock that %s wants", lock->holder->name, lock->holder->donor->name);
-    thread_unblock(lock->holder->donor);
-    lock->holder = lock->holder->donor;
-    lock->holder->donor = NULL;
-    lock->holder->wanted = NULL;
-    thread_yield();
+    //find the highest priority thread waiting on the lock
+    struct list_elem * max_thread = NULL;
+    struct list_elem * cursor = NULL
+    
+    max_thread = list_begin(&lock->waiting_on);
+    for (cursor = list_begin(&lock->waiting_on); cursor != list_end(&lock->waiting_on); cursor = list_next(cursor))
+    {
+      if (thread_priority(list_entry(cursor, struct thread, lock_e)) > thread_priority(list_entry(max_thread, struct thread, lock_e)))
+      {
+        max_thread = cursor;
+      }
+    }
+    
+    //Set the thread to give the lock to, new
+    struct thread * new = list_entry(cursor, struct thread, lock_e);
+    
+    //Now that this thread no longer holds the lock, it must "return" all donations for this lock
+    struct list_elem * doncur = NULL;
+    
+    for (doncur = list_begin(&thread_current()->donors); doncur != list_end(&lock->&thread_current()->donors); doncur = list_next(doncur))
+    {
+      if (list_entry(doncur, struct thread, don_e)->waiting_on == lock)
+      {
+        list_remove(doncur);
+      }
+    }
+    
+    //remove the max priority thread from the lock's list
+    list_remove(max_thread);
+    //Give the lock to new thread
+    lock->holder = new;
+    //Unblock new
+    thread_unblock(new);
+    //Remove the waiting_one from the thread
+    new->waiting_on = NULL;
+   
+    //Finaly, yeild so that the
   }
   else
   {

@@ -387,17 +387,25 @@ thread_set_priority (int new_priority)
 }
 
 //Garrett
-int thread_priority(struct thread * t) //Function returns the highest value in the priority chain
+//Function returns the highest value in the priority chain
+int thread_priority(struct thread * t) 
 {
   ASSERT(is_thread(t));
   
-  if(t->donor == NULL)
+  if(list_empty(t->donors))
   {
     return t->priority;
   }
   else
   {
-    return thread_priority(t->donor);
+      int maxpri = t->priority;
+      struct list_elem * cursor = NULL;
+      for (cursor = list_begin(&t->donors); cursor != list_end(&t->donors); cursor = list_next(cursor))
+      {
+        if (thread_priority(list_entry(cursor, struct thread, donor_e)) > maxpri)
+          maxpri = t->priority;
+      }
+      return maxpri;
   }
 }
 
