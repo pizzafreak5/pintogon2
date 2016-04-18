@@ -210,16 +210,18 @@ thread_create (const char *name, int priority,
   sf = alloc_frame (t, sizeof *sf);
   sf->eip = switch_entry;
   sf->ebp = 0;
-
+ 
   /* Add to run queue. */
   thread_unblock (t);
 
   //More garrett
   //Check if thread is higher priority, if so, yield currently
   struct thread * cur = thread_current(); //<- Garrett Insert
+  
 
-  if (cur != NULL && thread_priority(cur) < thread_priority(t))
+  if (cur != NULL && thread_priority(cur) < t->priority)
   {
+    //printf("YIELDING ON CREATE");
     thread_yield();
   }
   //End more Garrett
@@ -338,6 +340,8 @@ thread_yield (void)
   
   ASSERT (!intr_context ());
 
+  printf("\nYielding %s : %i:%i\n", cur->name,cur->priority,thread_priority(cur));
+
   old_level = intr_disable ();
   if (cur != idle_thread)
   {
@@ -346,10 +350,12 @@ thread_yield (void)
     //list_push_back (&ready_list, &cur->elem); //ORIGINAL LINE
     //Record the queue that thread is placed in
     cur->in_queue = thread_priority(cur);  
-  }
+  } //G's first 3 digits: 792-XX-XXXX More to Come!
+  
   //=============================
   cur->status = THREAD_READY; //Make sure this doesent get removed again
   //=============================
+  
   schedule ();
   intr_set_level (old_level);
 }
@@ -391,13 +397,13 @@ int thread_priority(struct thread * t) //Function returns the highest value in t
 {
   ASSERT(is_thread(t));
   
-  if(t->donor == NULL)
+  if(list_empty(&(t->donors)))
   {
     return t->priority;
   }
   else
   {
-    return thread_priority(t->donor);
+    return (thread_priority(list_entry(list_back(&t->donors), struct thread, donation_elem)));
   }
 }
 
@@ -555,7 +561,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
 
   //Garrett: Initialize donor, wanted
-  t->donor = NULL;
+  list_init (&(t->donors));
   t->wanted = NULL;
 
   old_level = intr_disable ();
@@ -665,6 +671,7 @@ thread_schedule_tail (struct thread *prev)
   
   //Mark current thread as running_thread
   cur->status = THREAD_RUNNING;
+  
 
   //Start a new time slice
   thread_ticks = 0;
@@ -684,7 +691,7 @@ thread_schedule_tail (struct thread *prev)
       ASSERT (prev != cur);
       palloc_free_page (prev);
     }
-
+  
   
   //Garrett End
   
