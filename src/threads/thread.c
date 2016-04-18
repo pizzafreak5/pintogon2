@@ -392,7 +392,7 @@ int thread_priority(struct thread * t)
 {
   ASSERT(is_thread(t));
   
-  if(list_empty(t->donors))
+  if(!list_empty(&t->donors))
   {
     return t->priority;
   }
@@ -562,9 +562,9 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->magic = THREAD_MAGIC;
 
-  //Garrett: Initialize donor, wanted
-  t->donor = NULL;
-  t->wanted = NULL;
+  //Garrett: Initialize donor list, wanted
+  list_init(&t->donors);
+  t->waiting_on = NULL;
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
