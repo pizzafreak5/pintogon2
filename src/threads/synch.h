@@ -22,7 +22,7 @@ struct lock
   {
     struct thread *holder;      /* Thread holding lock (for debugging). */
     struct semaphore semaphore; /* Binary semaphore controlling access. */
-    struct list wait_stack;     //Garrett: keeps track of the threads waiting on the queue
+    struct list waiting_threads;
   };
 
 void lock_init (struct lock *);

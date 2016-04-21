@@ -210,18 +210,17 @@ thread_create (const char *name, int priority,
   sf = alloc_frame (t, sizeof *sf);
   sf->eip = switch_entry;
   sf->ebp = 0;
- 
+
   /* Add to run queue. */
   thread_unblock (t);
 
   //More garrett
   //Check if thread is higher priority, if so, yield currently
   struct thread * cur = thread_current(); //<- Garrett Insert
-  
 
-  if (cur != NULL && thread_priority(cur) < t->priority)
+  if (cur != NULL && thread_priority(cur) < thread_priority(t))
   {
-    //printf("YIELDING ON CREATE");
+    //printf("\nPREEMPT by %s\n", t->name);
     thread_yield();
   }
   //End more Garrett
@@ -340,8 +339,6 @@ thread_yield (void)
   
   ASSERT (!intr_context ());
 
-  printf("\nYielding %s : %i:%i\n", cur->name,cur->priority,thread_priority(cur));
-
   old_level = intr_disable ();
   if (cur != idle_thread)
   {
@@ -350,12 +347,10 @@ thread_yield (void)
     //list_push_back (&ready_list, &cur->elem); //ORIGINAL LINE
     //Record the queue that thread is placed in
     cur->in_queue = thread_priority(cur);  
-  } //G's first 3 digits: 792-XX-XXXX More to Come!
-  
+  }
   //=============================
   cur->status = THREAD_READY; //Make sure this doesent get removed again
   //=============================
-  
   schedule ();
   intr_set_level (old_level);
 }
@@ -393,17 +388,29 @@ thread_set_priority (int new_priority)
 }
 
 //Garrett
-int thread_priority(struct thread * t) //Function returns the highest value in the priority chain
+//Function returns the highest value in the priority chain
+int thread_priority(struct thread * t) 
 {
   ASSERT(is_thread(t));
   
-  if(list_empty(&(t->donors)))
+  if(list_empty(&t->donors))
   {
+   // printf("\n%s has no donors\n", t->name);
     return t->priority;
   }
   else
   {
-    return (thread_priority(list_entry(list_back(&t->donors), struct thread, donation_elem)));
+      //printf("\n%s has a donors\n", t->name);
+      /*
+      int maxpri = t->priority;
+      struct list_elem * cursor = NULL;
+      for (cursor = list_begin(&t->donors); cursor != list_end(&t->donors); cursor = list_next(cursor))
+      {
+        if (thread_priority(list_entry(cursor, struct thread, donor_e)) > maxpri)
+          maxpri = t->priority;
+      }
+      return maxpri;*/
+      return thread_priority(list_entry((list_front(&t->donors)), struct thread, donor_e));
   }
 }
 
@@ -560,9 +567,9 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->magic = THREAD_MAGIC;
 
-  //Garrett: Initialize donor, wanted
-  list_init (&(t->donors));
-  t->wanted = NULL;
+  //Garrett: Initialize donor list, wanted
+  list_init(&t->donors);
+  t->waiting_on = NULL;
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
@@ -671,7 +678,6 @@ thread_schedule_tail (struct thread *prev)
   
   //Mark current thread as running_thread
   cur->status = THREAD_RUNNING;
-  
 
   //Start a new time slice
   thread_ticks = 0;
@@ -691,7 +697,7 @@ thread_schedule_tail (struct thread *prev)
       ASSERT (prev != cur);
       palloc_free_page (prev);
     }
-  
+
   
   //Garrett End
   
