@@ -113,11 +113,62 @@ sema_up (struct semaphore *sema)
   ASSERT (sema != NULL);
 
   old_level = intr_disable ();
+  
+  
+
+  /* ORIGINAL CODE
   if (!list_empty (&sema->waiters)) 
     thread_unblock (list_entry (list_pop_front (&sema->waiters),
                                 struct thread, elem));
+  */
   sema->value++;
+
+  /*Another thing
+  if (!list_empty (&sema->waiters))
+  {
+    struct thread * t = list_entry (list_pop_front(&sema->waiters), struct thread, elem);
+    thread_unblock(t);
+    
+    if (thread_priority(t) > thread_get_priority())
+    {
+      intr_set_level (old_level);
+      thread_yield();
+    }
+    
+  }*/
+  
+  if (!list_empty (&sema->waiters))
+  {
+    //Find the highest priority thread waiting on the semaphore
+    struct list_elem * cursor = list_begin(&sema->waiters);
+    struct thread * t = list_entry(cursor, struct thread, elem);
+    struct thread * temp = NULL;
+    struct list_elem * del = cursor;
+    
+    for (cursor = list_begin(&sema->waiters); cursor != list_end(&sema->waiters); cursor = list_next(cursor))
+    {
+      temp = list_entry(cursor, struct thread, elem);
+      if (thread_priority(t) < thread_priority(temp))
+      {
+        t = temp;
+        del = cursor;
+      }
+    }
+    
+    list_remove(del);
+    thread_unblock(t);
+    
+    if (thread_priority(t) > thread_get_priority())
+    {
+      intr_set_level (old_level);
+      thread_yield();
+    }
+    
+  }
+  
   intr_set_level (old_level);
+  
+  
 }
 
 static void sema_test_helper (void *sema_);
@@ -216,7 +267,12 @@ lock_acquire (struct lock *lock)
       //Put us on the locks waiting list
       list_push_front(&lock->waiting_threads, &thread_current()->lock_e);
       //Reposition holder on the ready queues
-      reposition_in_queue(lock->holder);
+      //If the holder is not blocked
+      if (lock->holder->status != THREAD_BLOCKED)
+      {
+        reposition_in_queue(lock->holder);
+      }
+      
       //Block current thread
       thread_block();
       

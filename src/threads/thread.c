@@ -424,7 +424,7 @@ void reposition_in_queue(struct thread * t) //resets a non-running thread's posi
     //Find and remove the thread from the 
     struct list_elem * cursor;
     cursor = list_begin(&ready_lists[t->in_queue]);
-    while (list_entry (cursor, struct thread, elem) != t)
+    while (list_entry (cursor, struct thread, elem) != t && cursor != list_end(&ready_lists[t->in_queue]))
     {
       cursor = list_next(cursor);
     }
