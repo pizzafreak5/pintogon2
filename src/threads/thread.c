@@ -169,7 +169,7 @@ thread_tick (void)
         //Check if it has been a second
 	  if (timer_ticks() % 100 == 0 )
 	  {  		
-	    //printf("One Second");
+	    
 	  	//Update load
 	  	int threads_ready = 0;
   
@@ -189,7 +189,7 @@ thread_tick (void)
       load_avg = addFixed( mulFixed(fractionInt(59,60), load_avg) , mulFixedInt(fractionInt(1,60),threads_ready));
       
       
-      printf("\n%i:%i:%s:",threads_ready,thread_get_load_avg(),t->name);
+      
       
 	  	//Update recent_cpu and yield thread if priority is changed
 	  	
@@ -317,7 +317,7 @@ thread_create (const char *name, int priority,
 
   if (cur != NULL && thread_priority(cur) < thread_priority(t))
   {
-    //printf("\nPREEMPT by %s\n", t->name);
+
     thread_yield();
   }
   //End more Garrett
@@ -514,21 +514,13 @@ int thread_priority(struct thread * t)
   
   if(list_empty(&t->donors))
   {
-   // printf("\n%s has no donors\n", t->name);
+   
     return t->priority;
   }
   else
   {
-      //printf("\n%s has a donors\n", t->name);
-      /*
-      int maxpri = t->priority;
-      struct list_elem * cursor = NULL;
-      for (cursor = list_begin(&t->donors); cursor != list_end(&t->donors); cursor = list_next(cursor))
-      {
-        if (thread_priority(list_entry(cursor, struct thread, donor_e)) > maxpri)
-          maxpri = t->priority;
-      }
-      return maxpri;*/
+      
+      
       return thread_priority(list_entry((list_front(&t->donors)), struct thread, donor_e));
   }
 }
@@ -562,8 +554,7 @@ void reposition_in_queue(struct thread * t) //resets a non-running thread's posi
 int
 thread_get_priority (void) 
 {
-  //struct thread * current = thread_current();
-  //return thread_priority(current);
+  
   return thread_priority(thread_current());
 }
 
@@ -638,11 +629,9 @@ thread_get_load_avg (void)
   
   
   //fixed value = mulFixedInt(load_avg, 100);
-  //printf("\nCurr load avg = %i", load_avg.num);
   
   intr_set_level(old_level);
   
-  //printf("\n%i\n", roundFixed( mulFixedInt(load_avg, 100)));
   
   
   

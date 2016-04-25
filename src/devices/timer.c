@@ -36,11 +36,13 @@ static void real_time_delay (int64_t num, int32_t denom);
  * This function checks if a thread needs to be unblocked
  * after waiting a certain amount of time
  */
-static void thread_wake(struct thread* t, void *aux)
+void thread_wake(struct thread* t, void *aux)
 {
   if (t->status == THREAD_BLOCKED && t->sleep_ticks > 0)
   {
+    
     t->sleep_ticks--;
+    //If this last decrement was the last tick, wake the thread.
     if(t->sleep_ticks == 0)
     {
       thread_unblock(t);
