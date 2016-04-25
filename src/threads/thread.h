@@ -94,7 +94,7 @@ struct thread
     struct list_elem donor_e;       //element for donor lists
     struct list_elem lock_e;            //element for lock's wanted list
     
-    //G's Shit==========================================
+    //G's ==========================================
     // BSD Variables
     int nice;			//Initialize nice to 0 as stated 
     //int ready_threads;		//Ready thread length
@@ -103,7 +103,7 @@ struct thread
     fixed recent_cpu;
     
     
-    //G's Shit==========================================
+    //G's==========================================
     
 #ifdef USERPROG
     /* Owned by userprog/process.c. */

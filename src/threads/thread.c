@@ -159,7 +159,7 @@ thread_tick (void)
   if (++thread_ticks >= TIME_SLICE)
     intr_yield_on_return ();
     
-  //G SHIT===========================
+  //G ===========================
   //BSD STUFF
   //Check if BSD is on
   if (thread_mlfqs)
@@ -254,7 +254,7 @@ thread_tick (void)
 	  intr_set_level(old_level);
   }
   
-  //G SHIT==============================
+  //G ==============================
 }
 
 /* Prints thread statistics. */
@@ -575,7 +575,7 @@ thread_get_priority (void)
   return thread_priority(thread_current());
 }
 
-//G's cancer======================================
+//G's ======================================
 /* Sets the current thread's nice value to NICE. */
 void thread_set_nice (int newNice) //was int nice UNUSED
 {
@@ -663,7 +663,7 @@ thread_get_recent_cpu (void)
   
   return roundFixed( mulFixedInt(thread_current()->recent_cpu, 100) ); //100 x recent_cpu
 }
-//G's cancer======================================
+//G's ======================================
 
 /* Idle thread.  Executes when no other thread is ready to run.
 
@@ -757,7 +757,7 @@ init_thread (struct thread *t, const char *name, int priority)
   //For BSD scheduler
   
   
-  //G Cancer =============
+  //G  =============
   t->nice = 0;
   t->milf_priority = convertToFixed(PRI_DEFAULT);
   t->recent_cpu = convertToFixed(0);
@@ -790,7 +790,7 @@ init_thread (struct thread *t, const char *name, int priority)
     }
   }
   
-  //G Cancer =============
+  //G  =============
   
   //Garrett
   
