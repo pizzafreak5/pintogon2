@@ -447,9 +447,50 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED)
   ASSERT (!intr_context ());
   ASSERT (lock_held_by_current_thread (lock));
 
+  /*Original Code
   if (!list_empty (&cond->waiters)) 
     sema_up (&list_entry (list_pop_front (&cond->waiters),
-                          struct semaphore_elem, elem)->semaphore);
+                          struct semaphore_elem, elem)->semaphore); */
+  if (!list_empty (&cond->waiters))
+  {
+    //Find the semaphore with the highest priority thread waiting on it
+    struct list_elem * cursor = (list_begin(&cond->waiters));
+    struct list_elem * del = cursor;
+    struct semaphore * cursor_sema = &list_entry(cursor, struct semaphore_elem, elem)->semaphore;
+    struct semaphore * max_sema = &list_entry(cursor, struct semaphore_elem, elem)->semaphore;
+    
+    struct list_elem * inner_cursor = NULL;
+    
+    struct thread * temp_one;
+    
+    int current_max_priority = 0;
+    
+    for (cursor = list_begin(&cond->waiters); cursor != list_end(&cond->waiters); cursor = list_next(cursor))
+    {
+      cursor_sema = &list_entry(cursor, struct semaphore_elem, elem)->semaphore;
+      
+      for (inner_cursor = list_begin(&cursor_sema->waiters); inner_cursor != list_end(&cursor_sema->waiters); inner_cursor = list_next(inner_cursor))
+      {
+        temp_one = list_entry(inner_cursor, struct thread, elem);
+        if (thread_priority(temp_one) > current_max_priority)
+        {
+          current_max_priority = thread_priority(temp_one);
+          max_sema = cursor_sema;
+          del = cursor;
+        }
+      }
+    }
+    
+    list_remove(del);
+    sema_up(max_sema);
+    /*
+    if (thread_priority(t) > thread_get_priority())
+    {
+      intr_set_level (old_level);
+      thread_yield();
+    }*/
+    
+  }
 }
 
 /* Wakes up all threads, if any, waiting on COND (protected by

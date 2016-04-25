@@ -76,6 +76,10 @@ static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
 
+
+fixed load_avg;    //the load average
+
+
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S
@@ -97,6 +101,10 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
+  
+  //For milfy G-Stack
+  load_avg = convertToFixed(0);
+  
 
   //Garrett Start
   int i = 0;
@@ -150,6 +158,43 @@ thread_tick (void)
   /* Enforce preemption. */
   if (++thread_ticks >= TIME_SLICE)
     intr_yield_on_return ();
+    
+  //G SHIT===========================
+  //BSD STUFF
+  //Check if BSD is on
+  if (thread_mlfqs)
+  {
+        //Check if it has been a second
+	  if (timer_ticks() %100 == 0 )
+	  {  		
+	    //printf("One Second");
+	  	//Update load
+	  	int threads_ready = 0;
+  
+      if (thread_current() != idle_thread)
+        threads_ready = 1;
+  
+  
+      int i = 0;
+      for (i = 0; i < PRI_MAX; ++i)
+      {
+        threads_ready = threads_ready + list_size(&ready_lists[i]);
+      }
+  
+      //printf("\n%its\n", threads_ready);
+  
+      load_avg = addFixed( mulFixed(fractionInt(59,60), load_avg) , mulFixedInt(fractionInt(1,60),threads_ready));
+	  	//Update recent_cpu and yield thread if priority is changed
+	  	
+      //recent_cpu = (2x load_avg) / (2xload_avg + 1) * recent_cpu + nice
+      t->recent_cpu = addFixedInt(mulFixed(t->recent_cpu,	divFixed(mulFixedInt(load_avg, 2),addFixedInt(mulFixedInt(load_avg, 2), 1)	)),t->nice);
+	  	//nice isn't changed here
+	  	//Will yield thread if current thread isn't highest priority
+	  	thread_set_nice(t->nice);
+	  }
+  }
+  
+  //G SHIT==============================
 }
 
 /* Prints thread statistics. */
@@ -376,6 +421,11 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
+
+  //if mlfq ignore call
+  if (thread_mlfqs)
+    return;
+    
   if (new_priority <= PRI_MAX)
     thread_current ()->priority = new_priority;
   else
@@ -392,6 +442,23 @@ thread_set_priority (int new_priority)
 int thread_priority(struct thread * t) 
 {
   ASSERT(is_thread(t));
+  
+  if (thread_mlfqs)
+  {
+    t->priority = roundFixed(t->milf_priority);
+  
+    if (t->priority > PRI_MAX)
+    {
+      t->priority = PRI_MAX;
+    }
+    else if (t->priority < PRI_MIN)
+    {
+      t->priority = PRI_MIN;
+    }
+    
+    return t->priority;
+  }
+    
   
   if(list_empty(&t->donors))
   {
@@ -448,36 +515,103 @@ thread_get_priority (void)
   return thread_priority(thread_current());
 }
 
+//G's cancer======================================
 /* Sets the current thread's nice value to NICE. */
-void
-thread_set_nice (int nice UNUSED) 
+void thread_set_nice (int newNice) //was int nice UNUSED
 {
-  /* Not yet implemented. */
+  struct thread * t = thread_current();
+  //Upper and lower bounds for nice
+  if (newNice > 20)
+  {
+	  newNice = 20;
+  } 
+  else if (newNice < -20)
+  {
+	  newNice = -20;
+  }
+  t->nice = newNice;
+  //setting priority to priority = PRI_MAX - (recent_cpu/4) - (nice*2)  
+  t->milf_priority = subFixed(
+	convertToFixed(PRI_MAX),
+	subFixed(
+	  	divFixedInt(t->recent_cpu, 4),
+	  	mulFixedInt(convertToFixed(t->nice), 2)
+	  )
+  );
+  
+  //Set real thread priority value
+  t->priority = roundFixed(t->milf_priority);
+  
+  if (t->priority > PRI_MAX)
+  {
+    t->priority = PRI_MAX;
+  }
+  else if (t->priority < PRI_MIN)
+  {
+    t->priority = PRI_MIN;
+  }
+  
+  //Check to see if it the highest priority if not yield
+  int i = 0;
+  for (i = 63; i >= 0; i--){
+    //Find the highest priority list with elements
+    if (!list_empty(&ready_lists[i]))
+    {
+        //NOT THE HIGHEST PRIORITY, YIELD
+     	if (i > floorFixed(t->milf_priority))
+	    {
+	      thread_yield();
+	      return;
+	    }
+    }
+  }
+  
 }
 
 /* Returns the current thread's nice value. */
 int
 thread_get_nice (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  struct thread * t = thread_current();
+  return t->nice;
+  //return 0;
 }
+
 
 /* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+
+  return roundFixed( mulFixedInt(load_avg, 100)); //100 x load_avg
+  /* load avg is a running average that should be recalculated 
+	load_avg = (59/60)*load_avg + (1/60)*ready_threads
+  */
+  //load_avg is declared in .h with initialization to 0
+  
+  enum intr_level old_level = intr_disable();
+  
+  
+  
+  //fixed value = mulFixedInt(load_avg, 100);
+  //printf("\nCurr load avg = %i", load_avg.num);
+  
+  intr_set_level(old_level);
+  
+  printf("\n%i\n", roundFixed( mulFixedInt(load_avg, 100)));
+  
+  
+  
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  
+  return roundFixed( mulFixedInt(thread_current()->recent_cpu, 100) ); //100 x recent_cpu
 }
+//G's cancer======================================
 
 /* Idle thread.  Executes when no other thread is ready to run.
 
@@ -564,12 +698,28 @@ init_thread (struct thread *t, const char *name, int priority)
   t->status = THREAD_BLOCKED;
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
-  t->priority = priority;
+  
+  //Garrett
+  if (!thread_mlfqs)
+    t->priority = priority;
+  //For BSD scheduler
+  
+  
+  //G Cancer =============
+  t->nice = 0;
+  t->milf_priority = convertToFixed(PRI_DEFAULT);
+  t->recent_cpu = convertToFixed(0);
+  //G Cancer =============
+  
+  //Garrett
+  
   t->magic = THREAD_MAGIC;
 
   //Garrett: Initialize donor list, wanted
   list_init(&t->donors);
   t->waiting_on = NULL;
+  
+  
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);

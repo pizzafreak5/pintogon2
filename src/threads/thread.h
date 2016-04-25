@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "fixedpoint.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -92,6 +93,18 @@ struct thread
     struct list_elem elem;              /* List element. */
     struct list_elem donor_e;       //element for donor lists
     struct list_elem lock_e;            //element for lock's wanted list
+    
+    //G's Shit==========================================
+    // BSD Variables
+    int nice;			//Initialize nice to 0 as stated 
+    //int ready_threads;		//Ready thread length
+
+    fixed milf_priority;
+    fixed recent_cpu;
+    
+    
+    //G's Shit==========================================
+    
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
