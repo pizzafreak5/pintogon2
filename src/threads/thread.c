@@ -164,8 +164,15 @@ thread_tick (void)
   //Check if BSD is on
   if (thread_mlfqs)
   {
+    enum intr_level old_level = intr_disable();
+    
+    
+    
+    
+    
+    
         //Check if it has been a second
-	  if (timer_ticks() %100 == 0 )
+	  if (timer_ticks() % 100 == 0 )
 	  {  		
 	    //printf("One Second");
 	  	//Update load
@@ -175,23 +182,76 @@ thread_tick (void)
         threads_ready = 1;
   
   
-      int i = 0;
-      for (i = 0; i < PRI_MAX; ++i)
+      struct list_elem * acursor = NULL;
+      
+      for (acursor = list_begin(&all_list); acursor != list_end(&all_list); acursor = list_next(acursor))
       {
-        threads_ready = threads_ready + list_size(&ready_lists[i]);
+        if (list_entry(acursor, struct thread, allelem)->status == THREAD_READY)
+        {
+          threads_ready++;
+        }
       }
-  
-      //printf("\n%its\n", threads_ready);
-  
+      
+      
+      
       load_avg = addFixed( mulFixed(fractionInt(59,60), load_avg) , mulFixedInt(fractionInt(1,60),threads_ready));
+      
+      
+      printf("\n%i:%i:%s:",threads_ready,thread_get_load_avg(),t->name);
+      
 	  	//Update recent_cpu and yield thread if priority is changed
 	  	
       //recent_cpu = (2x load_avg) / (2xload_avg + 1) * recent_cpu + nice
-      t->recent_cpu = addFixedInt(mulFixed(t->recent_cpu,	divFixed(mulFixedInt(load_avg, 2),addFixedInt(mulFixedInt(load_avg, 2), 1)	)),t->nice);
-	  	//nice isn't changed here
-	  	//Will yield thread if current thread isn't highest priority
-	  	thread_set_nice(t->nice);
+      struct thread * temp;
+      struct list_elem * cursor;
+      
+      fixed coef;
+      fixed multi;
+      
+      for (cursor = list_begin(&all_list); cursor != list_end(&all_list); cursor = list_next(cursor))
+      {
+        temp = list_entry(cursor, struct thread, allelem);
+        
+        if (temp == thread_current())
+        {
+          //temp->recent_cpu = addFixedInt(temp->recent_cpu, 1);
+        }
+        else
+        {
+          coef = divFixed(mulFixedInt(load_avg, 2),addFixedInt(mulFixedInt(load_avg, 2), 1)	);
+          multi = mulFixed(coef, temp->recent_cpu);
+          temp->recent_cpu = addFixedInt(multi,temp->nice); 
+        }
+          
+        
+      }
+	  	
 	  }
+	  
+	  
+	  if (timer_ticks() % 4 == 0)
+    {
+      thread_set_nice(t->nice);
+      
+      //Check to see if it the highest priority if not yield
+      int i = 0;
+      for (i = 63; i >= 0; i--)
+      {
+       //Find the highest priority list with elements
+        if (!list_empty(&ready_lists[i]))
+        {
+          //NOT THE HIGHEST PRIORITY, YIELD
+     	   if (i > thread_priority(t))
+	        {
+	          intr_set_level(old_level);
+	          intr_yield_on_return ();
+	        }
+        }
+      }
+      
+    }
+	  
+	  intr_set_level(old_level);
   }
   
   //G SHIT==============================
@@ -519,6 +579,9 @@ thread_get_priority (void)
 /* Sets the current thread's nice value to NICE. */
 void thread_set_nice (int newNice) //was int nice UNUSED
 {
+  
+  enum intr_level old = intr_disable();  
+    
   struct thread * t = thread_current();
   //Upper and lower bounds for nice
   if (newNice > 20)
@@ -551,20 +614,9 @@ void thread_set_nice (int newNice) //was int nice UNUSED
     t->priority = PRI_MIN;
   }
   
-  //Check to see if it the highest priority if not yield
-  int i = 0;
-  for (i = 63; i >= 0; i--){
-    //Find the highest priority list with elements
-    if (!list_empty(&ready_lists[i]))
-    {
-        //NOT THE HIGHEST PRIORITY, YIELD
-     	if (i > floorFixed(t->milf_priority))
-	    {
-	      thread_yield();
-	      return;
-	    }
-    }
-  }
+  
+  
+  intr_set_level(old);
   
 }
 
@@ -598,7 +650,7 @@ thread_get_load_avg (void)
   
   intr_set_level(old_level);
   
-  printf("\n%i\n", roundFixed( mulFixedInt(load_avg, 100)));
+  //printf("\n%i\n", roundFixed( mulFixedInt(load_avg, 100)));
   
   
   
@@ -709,6 +761,35 @@ init_thread (struct thread *t, const char *name, int priority)
   t->nice = 0;
   t->milf_priority = convertToFixed(PRI_DEFAULT);
   t->recent_cpu = convertToFixed(0);
+  
+  if (!list_empty(&all_list) && thread_mlfqs)
+  {
+    t->recent_cpu = thread_current()->recent_cpu;
+  }
+  
+  if (thread_mlfqs)
+  {
+     t->milf_priority = subFixed(
+	    convertToFixed(PRI_MAX),
+	    subFixed(
+	    	divFixedInt(t->recent_cpu, 4),
+	    	mulFixedInt(convertToFixed(t->nice), 2)
+	    )
+    );
+  
+    //Set real thread priority value
+    t->priority = roundFixed(t->milf_priority);
+  
+    if (t->priority > PRI_MAX)
+    {
+      t->priority = PRI_MAX;
+    }
+    else if (t->priority < PRI_MIN)
+    {
+      t->priority = PRI_MIN;
+    }
+  }
+  
   //G Cancer =============
   
   //Garrett
