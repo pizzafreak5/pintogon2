@@ -166,11 +166,6 @@ thread_tick (void)
   {
     enum intr_level old_level = intr_disable();
     
-    
-    
-    
-    
-    
         //Check if it has been a second
 	  if (timer_ticks() % 100 == 0 )
 	  {  		
@@ -181,7 +176,6 @@ thread_tick (void)
       if (thread_current() != idle_thread)
         threads_ready = 1;
   
-  
       struct list_elem * acursor = NULL;
       
       for (acursor = list_begin(&all_list); acursor != list_end(&all_list); acursor = list_next(acursor))
@@ -191,8 +185,6 @@ thread_tick (void)
           threads_ready++;
         }
       }
-      
-      
       
       load_avg = addFixed( mulFixed(fractionInt(59,60), load_avg) , mulFixedInt(fractionInt(1,60),threads_ready));
       

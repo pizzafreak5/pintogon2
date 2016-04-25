@@ -98,11 +98,8 @@ struct thread
     // BSD Variables
     int nice;			//Initialize nice to 0 as stated 
     //int ready_threads;		//Ready thread length
-
     fixed milf_priority;
     fixed recent_cpu;
-    
-    
     //G's==========================================
     
 #ifdef USERPROG

@@ -33,21 +33,17 @@ static void real_time_delay (int64_t num, int32_t denom);
 
 //Garrett Start
 /*
- * This function wakes a sleeping thread.
- * If the thread is being blocked, and the thread's
- * sleep_ticks, unblock the thread.
+ * This function checks if a thread needs to be unblocked
+ * after waiting a certain amount of time
  */
-static void wake_threads(struct thread* t, void *aux)
+static void thread_wake(struct thread* t, void *aux)
 {
-  if (t->status == THREAD_BLOCKED)
+  if (t->status == THREAD_BLOCKED && t->sleep_ticks > 0)
   {
-    if (t->sleep_ticks > 0)
+    t->sleep_ticks--;
+    if(t->sleep_ticks == 0)
     {
-      t->sleep_ticks--;
-      if(t->sleep_ticks == 0)
-      {
-        thread_unblock(t);
-      }
+      thread_unblock(t);
     }
   }
 }
@@ -207,15 +203,15 @@ timer_print_stats (void)
 
 /* Timer interrupt handler. */
 static void
-timer_interrupt (struct intr_frame *args UNUSED)
+timer_interrupt (struct intr_frame *args UNUSED) //Why does this work with unused. hm
 {
   //Original code
   ticks++;
   thread_tick ();
 
   //Note: Interrupts are disabled, as this is an interrupt handler
-  //This function call sends wake_threads() to each thread
-  thread_foreach(wake_threads, 0);
+  //This function call sends thread_wake to each thread
+  thread_foreach(thread_wake, 0);
   //Garrett End
 }
 
